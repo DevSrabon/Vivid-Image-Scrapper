@@ -23,7 +23,6 @@ export const downloadMultiple = async (images: ImageData[], query: string, asZip
   }
 
   if (!asZip) {
-    // Sequential download
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
       const ext = img.url.split('.').pop()?.split('?')[0] || "jpg";
@@ -32,7 +31,6 @@ export const downloadMultiple = async (images: ImageData[], query: string, asZip
       await new Promise(r => setTimeout(r, 400));
     }
   } else {
-    // ZIP download
     const zip = new JSZip();
     await Promise.all(images.map(async (img, idx) => {
       try {

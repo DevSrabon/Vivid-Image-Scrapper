@@ -1,31 +1,48 @@
 import type { ImageData } from '../types';
 
 export const fetchImagesFromBing = async (query: string, limit: number): Promise<ImageData[]> => {
-  const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}`;
-  const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`;
-  
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error("Network response was not ok");
-  const text = await res.text();
-  
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(text, "text/html");
-  const elements = doc.querySelectorAll(".iusc");
-  
   const urls: string[] = [];
-  for (const el of elements) {
+  let first = 1;
+  const maxPages = Math.ceil(limit / 35) + 1;
+  let currentPages = 0;
+
+  while (urls.length < limit && currentPages < maxPages) {
+    const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&first=${first}`;
+    const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`;
+    
     try {
-      const mAttr = el.getAttribute("m");
-      if (mAttr) {
-        const meta = JSON.parse(mAttr);
-        if (meta.murl && !urls.includes(meta.murl)) {
-          urls.push(meta.murl);
+      const res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error("Network response was not ok");
+      const text = await res.text();
+      
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, "text/html");
+      const elements = doc.querySelectorAll(".iusc");
+      
+      let addedCount = 0;
+      for (const el of elements) {
+        if (urls.length >= limit) break;
+        try {
+          const mAttr = el.getAttribute("m");
+          if (mAttr) {
+            const meta = JSON.parse(mAttr);
+            if (meta.murl && !urls.includes(meta.murl)) {
+              urls.push(meta.murl);
+              addedCount++;
+            }
+          }
+        } catch {
         }
       }
-    } catch {
-      // Ignore parse errors for individual nodes
+      
+      if (addedCount === 0) break;
+      
+      first += 35;
+      currentPages++;
+    } catch (err) {
+      console.error("Pagination fetch error:", err);
+      break; 
     }
-    if (urls.length >= limit) break;
   }
   
   return urls.map(url => ({ 
