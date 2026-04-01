@@ -1,0 +1,111 @@
+import { useState } from 'react';
+import { AlertCircle } from 'lucide-react';
+import { useImages } from './hooks/useImages';
+import { downloadSingle, downloadMultiple } from './utils/download';
+
+import { Header } from './components/Header';
+import { SearchForm } from './components/SearchForm';
+import { ControlsBar } from './components/ControlsBar';
+import { ImageCard } from './components/ImageCard';
+import { EmptyState } from './components/EmptyState';
+import { Footer } from './components/Footer';
+
+import type { ImageData } from './types';
+import './index.css';
+
+function App() {
+  const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState<number>(20);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadAsZip, setDownloadAsZip] = useState(true);
+
+  const { images, loading, error, searchImages, toggleSelect, toggleSelectAll } = useImages();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    searchImages(query, limit);
+  };
+
+  const handleDownloadSingle = async (img: ImageData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await downloadSingle(img);
+    } catch (err) {
+      console.error("Failed to download individual image:", err);
+      alert("Failed to download this image.");
+    }
+  };
+
+  const handleDownloadSelected = async () => {
+    const selectedImages = images.filter(img => img.selected);
+    if (selectedImages.length === 0) return;
+    
+    setDownloading(true);
+    try {
+      await downloadMultiple(selectedImages, query, downloadAsZip);
+    } catch (err) {
+      console.error("Failed to bulk download:", err);
+      alert("Error downloading images.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const selectedCount = images.filter(img => img.selected).length;
+
+  return (
+    <div className="container">
+      <Header />
+
+      <SearchForm 
+        query={query} setQuery={setQuery}
+        limit={limit} setLimit={setLimit}
+        loading={loading} onSearch={handleSearch}
+      />
+
+      {error && (
+        <div className="error-message">
+          <AlertCircle size={20} />
+          {error}
+        </div>
+      )}
+
+      <ControlsBar 
+        selectedCount={selectedCount}
+        totalCount={images.length}
+        downloading={downloading}
+        downloadAsZip={downloadAsZip}
+        setDownloadAsZip={setDownloadAsZip}
+        onToggleSelectAll={toggleSelectAll}
+        onDownload={handleDownloadSelected}
+      />
+
+      <main style={{ flex: 1 }}>
+        {loading ? (
+          <div className="gallery">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="skeleton" />
+            ))}
+          </div>
+        ) : images.length > 0 ? (
+          <div className="gallery">
+            {images.map(img => (
+              <ImageCard 
+                key={img.id}
+                img={img}
+                onSelect={toggleSelect}
+                onDownloadSingle={handleDownloadSingle}
+              />
+            ))}
+          </div>
+        ) : !loading && !error && (
+          <EmptyState />
+        )}
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+export default App;
