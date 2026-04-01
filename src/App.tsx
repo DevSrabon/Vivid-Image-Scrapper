@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useImages } from './hooks/useImages';
 import { downloadSingle, downloadMultiple } from './utils/download';
@@ -14,15 +14,37 @@ import type { ImageData } from './types';
 import './index.css';
 
 function App() {
-  const [query, setQuery] = useState('');
-  const [limit, setLimit] = useState<number>(20);
+  const [query, setQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('q') || '';
+  });
+  const [limit, setLimit] = useState<number>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const savedLimit = params.get('limit');
+    return savedLimit ? parseInt(savedLimit) : 20;
+  });
   const [downloading, setDownloading] = useState(false);
   const [downloadAsZip, setDownloadAsZip] = useState(true);
 
   const { images, loading, error, searchImages, toggleSelect, toggleSelectAll } = useImages();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (query) {
+      searchImages(query, limit);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    params.set('limit', limit.toString());
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+
     searchImages(query, limit);
   };
 
