@@ -1,13 +1,15 @@
-import { CheckSquare, ImageDown } from 'lucide-react';
+import { memo } from 'react';
+import { CheckSquare, ImageDown, Eye } from 'lucide-react';
 import type { ImageData } from '../types';
 
 interface Props {
   img: ImageData;
   onSelect: (id: string, e: React.MouseEvent) => void;
   onDownloadSingle: (img: ImageData, e: React.MouseEvent) => void;
+  onView: (img: ImageData, e: React.MouseEvent) => void;
 }
 
-export const ImageCard = ({ img, onSelect, onDownloadSingle }: Props) => (
+export const ImageCard = memo(({ img, onSelect, onDownloadSingle, onView }: Props) => (
   <div 
     className={`image-card ${img.selected ? 'selected' : ''}`}
     onClick={(e) => onSelect(img.id, e)}
@@ -32,6 +34,16 @@ export const ImageCard = ({ img, onSelect, onDownloadSingle }: Props) => (
     <div className="action-overlay">
       <button 
         className="icon-btn" 
+        title="View large image"
+        onClick={(e) => {
+          e.stopPropagation();
+          onView(img, e);
+        }}
+      >
+        <Eye size={18} />
+      </button>
+      <button 
+        className="icon-btn" 
         title="Download individual"
         onClick={(e) => {
           e.stopPropagation();
@@ -42,4 +54,4 @@ export const ImageCard = ({ img, onSelect, onDownloadSingle }: Props) => (
       </button>
     </div>
   </div>
-);
+));

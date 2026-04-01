@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useImages } from './hooks/useImages';
 import { downloadSingle, downloadMultiple } from './utils/download';
@@ -6,12 +6,13 @@ import { downloadSingle, downloadMultiple } from './utils/download';
 import { Header } from './components/Header';
 import { SearchForm } from './components/SearchForm';
 import { ControlsBar } from './components/ControlsBar';
-import { ImageCard } from './components/ImageCard';
 import { EmptyState } from './components/EmptyState';
 import { Footer } from './components/Footer';
 
 import type { ImageData } from './types';
 import './index.css';
+
+const ImageCard = lazy(() => import('./components/ImageCard').then(m => ({ default: m.ImageCard })));
 
 function App() {
   const [query, setQuery] = useState(() => {
@@ -25,6 +26,7 @@ function App() {
   });
   const [downloading, setDownloading] = useState(false);
   const [downloadAsZip, setDownloadAsZip] = useState(true);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   const { images, loading, error, searchImages, toggleSelect, toggleSelectAll } = useImages();
 
@@ -56,6 +58,11 @@ function App() {
       console.error("Failed to download individual image:", err);
       alert("Failed to download this image.");
     }
+  };
+
+  const handleView = (img: ImageData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setViewingImage(img.url);
   };
 
   const handleDownloadSelected = async () => {
@@ -111,14 +118,17 @@ function App() {
           </div>
         ) : images.length > 0 ? (
           <div className="gallery">
-            {images.map(img => (
-              <ImageCard 
-                key={img.id}
-                img={img}
-                onSelect={toggleSelect}
-                onDownloadSingle={handleDownloadSingle}
-              />
-            ))}
+            <Suspense fallback={null}>
+              {images.map(img => (
+                <ImageCard 
+                  key={img.id}
+                  img={img}
+                  onSelect={toggleSelect}
+                  onDownloadSingle={handleDownloadSingle}
+                  onView={handleView}
+                />
+              ))}
+            </Suspense>
           </div>
         ) : !loading && !error && (
           <EmptyState />
@@ -126,6 +136,40 @@ function App() {
       </main>
 
       <Footer />
+
+      {viewingImage && (
+        <div 
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999, 
+            backgroundColor: 'rgba(0,0,0,0.9)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '2rem',
+            animation: 'fadeIn 0.2s ease'
+          }}
+          onClick={() => setViewingImage(null)}
+        >
+          <button 
+            style={{
+              position: 'absolute', top: '1rem', right: '1.5rem',
+              background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)',
+              fontSize: '3rem', cursor: 'pointer', padding: '0.5rem',
+              lineHeight: 1
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'white'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
+            onClick={() => setViewingImage(null)}
+          >
+            &times;
+          </button>
+          <img 
+            src={viewingImage} 
+            alt="Expanded view" 
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '0.5rem' }} 
+            onClick={(e) => e.stopPropagation()}
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      )}
     </div>
   );
 }
